@@ -3,6 +3,15 @@ const router = express.Router();
 const Category = require("../models/Category");
 const upload = require("../middleware/upload");
 
+// Helper — build the public-relative image path from the saved file
+function imageUrl(req, file) {
+  if (!file) return null;
+  // file.destination is the absolute disk path; strip the public base to get the URL path
+  const publicBase = process.env.FRONTEND_PUBLIC_PATH || "";
+  const dest = file.destination.replace(publicBase, "").replace(/\\/g, "/");
+  return `${dest}/${file.filename}`;
+}
+
 // GET all categories
 router.get("/", async (req, res) => {
   try {
@@ -13,7 +22,7 @@ router.get("/", async (req, res) => {
   }
 });
 
-// GET single category
+// GET single
 router.get("/:id", async (req, res) => {
   try {
     const category = await Category.findById(req.params.id);
@@ -24,15 +33,15 @@ router.get("/:id", async (req, res) => {
   }
 });
 
-// POST create category
+// POST create
 router.post("/", upload.single("image"), async (req, res) => {
   try {
     const { name } = req.body;
     if (!name) return res.status(400).json({ message: "Category name is required" });
 
-    const imageUrl = req.file ? `/uploads/${req.file.filename}` : req.body.image || "";
+    const img = req.file ? imageUrl(req, req.file) : (req.body.image || "");
 
-    const category = new Category({ name, image: imageUrl });
+    const category = new Category({ name, image: img });
     const saved = await category.save();
     res.status(201).json(saved);
   } catch (error) {
@@ -40,13 +49,13 @@ router.post("/", upload.single("image"), async (req, res) => {
   }
 });
 
-// PUT update category
+// PUT update
 router.put("/:id", upload.single("image"), async (req, res) => {
   try {
     const { name } = req.body;
     const updateData = {};
     if (name) updateData.name = name;
-    if (req.file) updateData.image = `/uploads/${req.file.filename}`;
+    if (req.file) updateData.image = imageUrl(req, req.file);
 
     const updated = await Category.findByIdAndUpdate(req.params.id, updateData, { new: true });
     if (!updated) return res.status(404).json({ message: "Category not found" });
@@ -56,7 +65,7 @@ router.put("/:id", upload.single("image"), async (req, res) => {
   }
 });
 
-// DELETE category
+// DELETE
 router.delete("/:id", async (req, res) => {
   try {
     const deleted = await Category.findByIdAndDelete(req.params.id);

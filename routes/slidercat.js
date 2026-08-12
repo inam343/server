@@ -2,8 +2,9 @@ const express = require("express");
 const router = express.Router();
 const Product = require("../models/productslider");
 const upload = require("../middleware/upload");
+const imageUrl = require("../middleware/imageUrl");
 
-// GET all slides
+// GET all
 router.get("/", async (req, res) => {
   try {
     const products = await Product.find();
@@ -13,7 +14,7 @@ router.get("/", async (req, res) => {
   }
 });
 
-// GET single slide
+// GET single
 router.get("/:id", async (req, res) => {
   try {
     const product = await Product.findById(req.params.id);
@@ -24,13 +25,13 @@ router.get("/:id", async (req, res) => {
   }
 });
 
-// POST create slide
+// POST create
 router.post("/", upload.single("image"), async (req, res) => {
   try {
     const { name, brand, price, oldPrice, rating } = req.body;
-    const imageUrl = req.file ? `/uploads/${req.file.filename}` : req.body.image || "";
+    const image = req.file ? imageUrl(req.file) : (req.body.image || "");
 
-    const product = new Product({ name, brand, price, oldPrice, rating, image: imageUrl });
+    const product = new Product({ name, brand, price, oldPrice, rating, image });
     const saved = await product.save();
     res.status(201).json(saved);
   } catch (err) {
@@ -38,15 +39,17 @@ router.post("/", upload.single("image"), async (req, res) => {
   }
 });
 
-// PUT update slide
+// PUT update
 router.put("/:id", upload.single("image"), async (req, res) => {
   try {
     const { name, brand, price, oldPrice, rating } = req.body;
-    const updateData = { name, brand, price, oldPrice, rating };
-    if (req.file) updateData.image = `/uploads/${req.file.filename}`;
-
-    // Remove undefined fields
-    Object.keys(updateData).forEach((k) => updateData[k] === undefined && delete updateData[k]);
+    const updateData = {};
+    if (name !== undefined) updateData.name = name;
+    if (brand !== undefined) updateData.brand = brand;
+    if (price !== undefined) updateData.price = price;
+    if (oldPrice !== undefined) updateData.oldPrice = oldPrice;
+    if (rating !== undefined) updateData.rating = rating;
+    if (req.file) updateData.image = imageUrl(req.file);
 
     const updated = await Product.findByIdAndUpdate(req.params.id, updateData, { new: true });
     if (!updated) return res.status(404).json({ message: "Slide not found" });
@@ -56,7 +59,7 @@ router.put("/:id", upload.single("image"), async (req, res) => {
   }
 });
 
-// DELETE slide
+// DELETE
 router.delete("/:id", async (req, res) => {
   try {
     const deleted = await Product.findByIdAndDelete(req.params.id);
