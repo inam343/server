@@ -1,25 +1,41 @@
 const path = require("path");
 
 /**
- * Returns the public-relative image URL from a multer file object.
- * Example output: "/productitems/1720000000000-123456789.jpg"
+ * Converts a multer file object into a public-relative URL path.
  *
- * Uses path.relative() instead of string replace — works correctly on
- * Windows regardless of backslash/forward-slash mix in env vars.
+ * Input  (Windows example):
+ *   file.destination = "C:\Users\dell\...\grocerystore\public\productitems"
+ *   file.filename    = "1720000000000-123456789.jpg"
+ *
+ * Output:
+ *   "/productitems/1720000000000-123456789.jpg"
+ *
+ * This path is stored in MongoDB and used directly as <img src> in Next.js
+ * because Next.js serves everything in /public at the root URL.
  */
 function imageUrl(file) {
   if (!file) return null;
 
-  const publicBase = process.env.FRONTEND_PUBLIC_PATH;
+  const raw = process.env.FRONTEND_PUBLIC_PATH;
 
-  if (publicBase) {
-    // path.relative gives us e.g. "productitems\1720000000-123.jpg" on Windows
-    const rel = path.relative(publicBase, path.join(file.destination, file.filename));
-    // Convert backslashes → forward slashes and prepend /
-    return "/" + rel.replace(/\\/g, "/");
+  if (raw) {
+    // Normalize the public base (forward slashes, no trailing slash)
+    const base = raw.replace(/\\/g, "/").replace(/\/$/, "");
+
+    // Build full path of the saved file, normalize to forward slashes
+    const full = path.join(file.destination, file.filename).replace(/\\/g, "/");
+
+    // Strip the base prefix → "/productitems/filename.jpg"
+    const relative = full.replace(base, "");
+
+    console.log("[imageUrl] base:", base);
+    console.log("[imageUrl] full:", full);
+    console.log("[imageUrl] saved as:", relative);
+
+    return relative;
   }
 
-  // Fallback: backend serves /uploads/ statically
+  // Fallback when FRONTEND_PUBLIC_PATH is not set (e.g. production server)
   return `/uploads/${file.filename}`;
 }
 
