@@ -1,24 +1,25 @@
+const path = require("path");
+
 /**
  * Returns the public-relative image URL from a multer file object.
  * Example output: "/productitems/1720000000000-123456789.jpg"
  *
- * Works by stripping the FRONTEND_PUBLIC_PATH prefix from file.destination.
- * If the env var is not set (production with separate filesystems) it falls
- * back to "/uploads/<filename>" — the backend still serves that route.
+ * Uses path.relative() instead of string replace — works correctly on
+ * Windows regardless of backslash/forward-slash mix in env vars.
  */
 function imageUrl(file) {
   if (!file) return null;
 
   const publicBase = process.env.FRONTEND_PUBLIC_PATH;
+
   if (publicBase) {
-    // Normalize both paths to forward slashes for comparison
-    const dest = file.destination.replace(/\\/g, "/");
-    const base = publicBase.replace(/\\/g, "/");
-    const relative = dest.replace(base, "");
-    return `${relative}/${file.filename}`;
+    // path.relative gives us e.g. "productitems\1720000000-123.jpg" on Windows
+    const rel = path.relative(publicBase, path.join(file.destination, file.filename));
+    // Convert backslashes → forward slashes and prepend /
+    return "/" + rel.replace(/\\/g, "/");
   }
 
-  // Fallback when not sharing filesystem (e.g. Railway deployment)
+  // Fallback: backend serves /uploads/ statically
   return `/uploads/${file.filename}`;
 }
 
