@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const Category = require("../models/Category");
+const upload = require("../middleware/upload");
 
 // GET all categories
 router.get("/", async (req, res) => {
@@ -8,10 +9,61 @@ router.get("/", async (req, res) => {
     const categories = await Category.find();
     res.status(200).json(categories);
   } catch (error) {
-    res.status(500).json({
-      message: "Error fetching categories",
-      error: error.message,
-    });
+    res.status(500).json({ message: "Error fetching categories", error: error.message });
+  }
+});
+
+// GET single category
+router.get("/:id", async (req, res) => {
+  try {
+    const category = await Category.findById(req.params.id);
+    if (!category) return res.status(404).json({ message: "Category not found" });
+    res.status(200).json(category);
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching category", error: error.message });
+  }
+});
+
+// POST create category
+router.post("/", upload.single("image"), async (req, res) => {
+  try {
+    const { name } = req.body;
+    if (!name) return res.status(400).json({ message: "Category name is required" });
+
+    const imageUrl = req.file ? `/uploads/${req.file.filename}` : req.body.image || "";
+
+    const category = new Category({ name, image: imageUrl });
+    const saved = await category.save();
+    res.status(201).json(saved);
+  } catch (error) {
+    res.status(500).json({ message: "Error creating category", error: error.message });
+  }
+});
+
+// PUT update category
+router.put("/:id", upload.single("image"), async (req, res) => {
+  try {
+    const { name } = req.body;
+    const updateData = {};
+    if (name) updateData.name = name;
+    if (req.file) updateData.image = `/uploads/${req.file.filename}`;
+
+    const updated = await Category.findByIdAndUpdate(req.params.id, updateData, { new: true });
+    if (!updated) return res.status(404).json({ message: "Category not found" });
+    res.status(200).json(updated);
+  } catch (error) {
+    res.status(500).json({ message: "Error updating category", error: error.message });
+  }
+});
+
+// DELETE category
+router.delete("/:id", async (req, res) => {
+  try {
+    const deleted = await Category.findByIdAndDelete(req.params.id);
+    if (!deleted) return res.status(404).json({ message: "Category not found" });
+    res.status(200).json({ message: "Category deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ message: "Error deleting category", error: error.message });
   }
 });
 
