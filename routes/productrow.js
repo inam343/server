@@ -2,12 +2,13 @@ const express = require("express");
 const router = express.Router();
 const Productrow = require("../models/productrow");
 const upload = require("../middleware/upload");
+const imageUrl = require("../middleware/imageUrl");
 
 // GET all
 router.get("/", async (req, res) => {
   try {
-    const productrow = await Productrow.find();
-    res.json(productrow);
+    const products = await Productrow.find();
+    res.json(products);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -28,8 +29,9 @@ router.get("/:id", async (req, res) => {
 router.post("/", upload.single("image"), async (req, res) => {
   try {
     const { name, brand, price, oldPrice, rating } = req.body;
-    const imageUrl = req.file ? `/uploads/${req.file.filename}` : req.body.image || "";
-    const product = new Productrow({ name, brand, price, oldPrice, rating, image: imageUrl });
+    const image = req.file ? imageUrl(req.file) : (req.body.image || "");
+
+    const product = new Productrow({ name, brand, price, oldPrice, rating, image });
     const saved = await product.save();
     res.status(201).json(saved);
   } catch (err) {
@@ -41,9 +43,13 @@ router.post("/", upload.single("image"), async (req, res) => {
 router.put("/:id", upload.single("image"), async (req, res) => {
   try {
     const { name, brand, price, oldPrice, rating } = req.body;
-    const updateData = { name, brand, price, oldPrice, rating };
-    if (req.file) updateData.image = `/uploads/${req.file.filename}`;
-    Object.keys(updateData).forEach((k) => updateData[k] === undefined && delete updateData[k]);
+    const updateData = {};
+    if (name !== undefined) updateData.name = name;
+    if (brand !== undefined) updateData.brand = brand;
+    if (price !== undefined) updateData.price = price;
+    if (oldPrice !== undefined) updateData.oldPrice = oldPrice;
+    if (rating !== undefined) updateData.rating = rating;
+    if (req.file) updateData.image = imageUrl(req.file);
 
     const updated = await Productrow.findByIdAndUpdate(req.params.id, updateData, { new: true });
     if (!updated) return res.status(404).json({ message: "Product not found" });
