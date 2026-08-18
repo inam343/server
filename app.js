@@ -23,6 +23,7 @@ const productrowRoutes = require("./routes/productrow");
 const featuredProductRoutes = require("./routes/featuredproduct");
 const breakfastRoutes = require("./routes/breakefast");
 const usersRoutes = require("./routes/users");
+const ordersRoutes = require("./routes/orders");
 
 // Models for dashboard counts
 const Category = require("./models/Category");
@@ -31,6 +32,7 @@ const Featuredproduct = require("./models/featuredproduct");
 const Breakfast = require("./models/breakfast");
 const Productslider = require("./models/productslider");
 const User = require("./models/User");
+const Order = require("./models/Order");
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -68,6 +70,7 @@ app.use("/api/productrow", productrowRoutes);
 app.use("/api/featuredproduct", featuredProductRoutes);
 app.use("/api/breakfast", breakfastRoutes);
 app.use("/api/users", usersRoutes);
+app.use("/api/orders", ordersRoutes);
 
 // Dashboard stats — counts for all major collections
 app.get("/api/stats", async (req, res) => {
@@ -79,6 +82,8 @@ app.get("/api/stats", async (req, res) => {
       totalFeaturedProducts,
       totalBreakfast,
       totalSliders,
+      totalOrders,
+      pendingOrders,
     ] = await Promise.all([
       User.countDocuments(),
       Category.countDocuments(),
@@ -86,6 +91,8 @@ app.get("/api/stats", async (req, res) => {
       Featuredproduct.countDocuments(),
       Breakfast.countDocuments(),
       Productslider.countDocuments(),
+      Order.countDocuments(),
+      Order.countDocuments({ status: "Pending" }),
     ]);
 
     const totalProducts = totalLatestProducts + totalFeaturedProducts + totalBreakfast;
@@ -98,6 +105,8 @@ app.get("/api/stats", async (req, res) => {
       totalFeaturedProducts,
       totalBreakfast,
       totalSliders,
+      totalOrders,
+      pendingOrders,
     });
   } catch (err) {
     res.status(500).json({ message: err.message });
